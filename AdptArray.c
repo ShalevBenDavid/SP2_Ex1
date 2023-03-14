@@ -7,7 +7,7 @@ struct AdptArray_ {
     DEL_FUNC delF; // Pointer to the delete function.
     COPY_FUNC copyF; // Pointer to the copy function.
     PRINT_FUNC printF; // Pointer to the print function.
-    PElement* items; // Item in the adaptive array.
+    PElement* items; // Pointer to the adaptive array.
     int size; // The size of the array.
 };
 
@@ -15,15 +15,16 @@ struct AdptArray_ {
 PAdptArray CreateAdptArray(COPY_FUNC copyFunc, DEL_FUNC delFunc, PRINT_FUNC printFunc) {
     PAdptArray arr = (PAdptArray)malloc(sizeof(struct AdptArray_));
     if(!arr) return NULL;
-    // No items in the array.
+    // Allocate memory for the array.
     arr -> items = (PElement*) calloc(1, sizeof (PElement));
-    // If calloc failed.
+    // If allocation failed.
     if (!arr -> items) {
         free(arr);
         return NULL;
     }
+    // No items in the array.
     arr -> size = 0;
-    // Assigning the pointers we got as parameters to the object.
+    // Assigning the pointers we got as parameters to the fields.
     arr -> delF = delFunc;
     arr -> copyF = copyFunc;
     arr -> printF = printFunc;
@@ -37,43 +38,47 @@ void DeleteAdptArray(PAdptArray arr) {
     if (arr) {
         // Free all items in the array.
         for (int i = 0; i < arr -> size; i++) {
-            // First delete the item with the appropriate function.
-            if (arr -> items[i]) {
+            // Delete the item with the appropriate function only if it's not NULL.
+            if (arr -> items[i])
                 arr -> delF(arr -> items[i]);
-            }
         }
+        // Free the allocation of the array.
+        free(arr -> items);
         // Free the array object.
         free(arr);
     }
 }
 
+// Method that copies the old array to a new array of size "newSize" and returns a pointer to it.
 PElement* extendArray (PAdptArray arr, int newSize) {
     PElement* newArray = (PElement*) calloc(newSize, sizeof (PElement));
-    // If calloc failed.
-    if (!newArray) {
-        return NULL;
-    }
+    // If calloc method failed.
+    if (!newArray) return NULL;
     // Copy the items from the old array to the new array.
     for(int i = 0; i < arr -> size; i++) {
+        // Only if it's not NULL we will copy it to the new array and delete it from the old array.
         if (arr -> items[i]) {
             newArray[i] = arr -> copyF(arr ->items[i]);
-            free(arr -> items[i]);
+            arr -> delF(arr -> items[i]);
         }
     }
+    // Free the allocation of the old array.
     free(arr -> items);
+    // Return the pointer to the new array.
     return newArray;
 }
 
-// Receives the array, an index and an item. Sav
+// Receives the array, an index and an item. Saves a copy of the item in that index.
 Result SetAdptArrayAt(PAdptArray arr, int index, PElement item) {
     // If the array wasn't initialized properly.
-    if (arr == NULL) {
-        return FAIL;
-    }
+    if (!arr) return FAIL;
     // If the index exists in the current array, there's no need to increase its size.
     if (index <= arr -> size - 1) {
+        // If theres an item in index, delete it.
+        if (arr -> items[index])
+            arr -> delF(arr -> items[index]);
         // Copy the item to a temporary object (if not NULL).
-        if (item != NULL) {
+        if (item) {
             PElement temp = arr -> copyF(item);
             // Insert the copy to the array at index.
             arr -> items[index] = temp;
@@ -95,7 +100,7 @@ Result SetAdptArrayAt(PAdptArray arr, int index, PElement item) {
             // Make arr point to the new memory address.
             arr -> items = tempArray;
             // Copy the item to a temporary object (if not NULL).
-            if (item != NULL) {
+            if (item) {
                 PElement temp = arr -> copyF(item);
                 // Insert the copy to the array at index.
                 arr -> items[index] = temp;
@@ -111,10 +116,8 @@ Result SetAdptArrayAt(PAdptArray arr, int index, PElement item) {
 // Receives index and returns a copy of the item in that index.
 PElement GetAdptArrayAt(PAdptArray arr, int index) {
     // If the array wasn't initialized properly or index doesn't exist.
-    if (arr == NULL || index > arr -> size - 1) {
-        return NULL;
-    }
-    // If the index exists in the current array, return the copy in index (if not NULL).
+    if (!arr || index > arr -> size - 1) return NULL;
+    // If the index exists in the current array, return the copy at index (if not NULL).
     else {
         if (arr -> items[index])
             return arr -> copyF(arr -> items[index]);
@@ -138,10 +141,13 @@ int GetAdptArraySize(PAdptArray arr) {
 
 // Print the array items.
 void PrintDB(PAdptArray arr) {
-    for (int i = 0; i < arr -> size; i++) {
-        // Call the appropriate function to print each item (if not NULL).
-        if (arr -> items[i]) {
-            arr -> printF(arr -> items[i]);
+    // Check first that arr is initialized (if not NULL).
+    if (arr) {
+        for (int i = 0; i < arr -> size; i++) {
+            // Call the appropriate function to print each item (if not NULL).
+            if (arr -> items[i]) {
+                arr -> printF(arr -> items[i]);
+            }
         }
     }
 }
